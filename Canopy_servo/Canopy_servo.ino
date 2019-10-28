@@ -2,6 +2,7 @@
   水滴感測器 Pin A0
   I2C PIN SDA A4 SCL A5
   LCD 與 GY30並聯
+  伺服馬達Pin 9
 */
 
 //I2C腳位的的標頭檔(A5=SCL,A4=SDA)
@@ -11,8 +12,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <DHT.h>
 #include <BH1750.h>
-#include <IRremote.h>
-#include <Stepper.h>
+#include <Servo.h>
 
 #define DHTPIN 2             //DHT輸入PIN腳為2
 #define DHTTYPE DHT11        //選擇HDT的規格
@@ -22,32 +22,26 @@
 //水滴感測的範圍
 const int sensorMin = 0;    //sensor minimum
 const int sensorMax = 1024; //sensor maximum
-//紅外線感測器
-int autoset = 1;    //預設啟動自動模式為1 關閉為0
-//馬達
-int motor = 0;  //預設馬達伸出為1 縮回為0
+
+int motor = 0;    //伸出=1,收回=0
 
 //初始化DHT11
 DHT dht(DHTPIN, DHTTYPE);
 //設定 LCD I2C 位址
 LiquidCrystal_I2C lcd(0x27,2,1,0,4,5,6,7,3,POSITIVE);
 BH1750 lightMeter;
-//紅外線感測器
-IRrecv irrecv(4); // Receive on pin 4
-decode_results results;
-//2個步進馬達的步數及PIN腳
-Stepper StepperL(2048, 8, 10, 9, 11);
-Stepper StepperR(2048, 4, 6, 5, 7);
+//建立一個 servo 物件，最多可建立 12個 servo
+Servo myservo;
+
 
 /*設定*/
 void setup(){
   Wire.begin();
   dht.begin();
+  myservo.attach(9);    //將servo連結到pin9
   lightMeter.begin();
-  StepperL.setSpeed(15);  //設定馬達RPM
-  StepperR.setSpeed(15);  
-  irrecv.enableIRIn(); // 啟動紅外線接收器
-  delay(1000);
+  myservo.write(0);
+  delay(15);
   
   lcd.backlight();
   lcd.begin(16,4);     //初始化 LCD，一行16的字元，共4行，預設開啟背光
@@ -58,52 +52,33 @@ void setup(){
 
 /*主程式*/
 void loop(){
-  if (irrecv.decode(&results)){
-    switch(results.value){
-      case 0x00FF629D:
-        do{
-          temp();
-          delay(1000);
-          lcd.clear();
-          drip();
-          delay(1000);
-          lcd.clear();
-          GY30();
-          delay(1000);
-          lcd.clear();
+    lcd.setCursor(0,0);
+    temp();
+    lcd.clear();
+    drip();
+    lcd.clear();
+    GY30();
+    lcd.clear();
 
-          //執行馬達
-          if(temp() == 1 || drip() == 1 || GY30() == 1){
-            lcd.print("OPEN");
-            StepperL.step(2048);
-            StepperR.step(2048);
-            delay(1000);
-            lcd.clear();
-          }
-          else{
-            lcd.print("CLOSE");
-            StepperL.step(-2048);
-            StepperR.step(-2048);
-            delay(1000);
-            lcd.clear();
-          }
-        }while(results.value != 0x00FF629D);
-        break;
-      case 0x00FFA25D:  //按鍵(CH-)  
-        StepperL.step(2048);
-        StepperR.step(2048);
-        break;
-      case 0x00FFE21D:  //按鍵(CH+)
-        StepperL.step(-2048);
-        StepperR.step(-2048);
-        break;
+    delay(1000);
+    if(temp() == 1 || drip() == 1 || GY30() == 1){  //伸出=1,收回=0
+      myservo.write(0);
+      delay(1000);
+      lcd.clear();
+      lcd.print("OPEN");
     }
-  irrecv.resume();
+    else{
+      myservo.write(90);
+      delay(1000);
+      lcd.clear();
+      lcd.print("CLOSE");
+    }
   }
-}
 
 /*溫濕度感測器模組*/
 float temp(){
+  delay(2000);        //必須至少delay 2 秒
+  lcd.clear();
   lcd.setCursor(0,0); //設定游標位置在第一行行首
   lcd.print("DHT11 Temperature");
 
@@ -139,6 +114,8 @@ float temp(){
 
 /*水滴感測器模組*/
 float drip(){
+  delay(2000);  //delay 2秒
+  lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Water drop sensor");
   
@@ -167,6 +144,8 @@ float drip(){
 
 /*光強度感測器模組*/
 float GY30(){
+  delay(1000);
+  lcd.clear();
   lcd.setCursor(0,0);
   float lux = lightMeter.readLightLevel();
   
