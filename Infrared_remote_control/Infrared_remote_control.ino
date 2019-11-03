@@ -1,10 +1,10 @@
 #include <IRremote.h>
 
 #define LED 13
-#define OPEN 0x00FF30CF
-#define CLOSE 0x00FF18E7
+#define OPEN 0x511DBB
+#define CLOSE 0xEE886D7F
 
-IRrecv irrecv(4); // Receive on pin 4
+IRrecv irrecv(3); // Receive on pin 3
 decode_results results;
 
 const int in;
@@ -14,6 +14,7 @@ void setup() {
   pinMode(LED,OUTPUT);
   digitalWrite(LED,LOW);
   Serial.println("OPEN");
+  irrecv.blink13(true); // 設為true的話，當收到訊號時，腳位13的LED便會閃爍
   irrecv.enableIRIn(); // 啟動紅外線接收器
   delay(1000);
 }

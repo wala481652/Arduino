@@ -2,11 +2,12 @@
   水滴感測器 Pin A0
   I2C PIN SDA A4 SCL A5
   LCD 與 GY30並聯
+  紅外線感測器PIN 3
 */
 
 //I2C腳位的的標頭檔(A5=SCL,A4=SDA)
-#include <Wire.h> 
-//使用I2C控制器控制標準LCD的聲明                
+#include <Wire.h>
+//使用I2C控制器控制標準LCD的聲明
 #include <LCD.h>
 #include <LiquidCrystal_I2C.h>
 #include <DHT.h>
@@ -18,50 +19,53 @@
 #define DHTTYPE DHT11        //選擇HDT的規格
 //#define DHTTYPE DHT22      //DHT 22  (AM2302), AM2321
 //#define DHTTYPE DHT21      //DHT 21  (AM2301)
+#define OPEN 0xE318261B
+#define CLOSE 0xEE886D7F
+#define automode 0x511DBB
 
 //水滴感測的範圍
 const int sensorMin = 0;    //sensor minimum
 const int sensorMax = 1024; //sensor maximum
-//紅外線感測器
+int i;
 int autoset = 1;    //預設啟動自動模式為1 關閉為0
-//馬達
-int motor = 0;  //預設馬達伸出為1 縮回為0
+int motor = 0;      //預設馬達伸出為1 縮回為0
 
 //初始化DHT11
 DHT dht(DHTPIN, DHTTYPE);
 //設定 LCD I2C 位址
-LiquidCrystal_I2C lcd(0x27,2,1,0,4,5,6,7,3,POSITIVE);
+LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 BH1750 lightMeter;
 //紅外線感測器
-IRrecv irrecv(4); // Receive on pin 4
+IRrecv irrecv(3); // Receive on pin 4
 decode_results results;
 //2個步進馬達的步數及PIN腳
 Stepper StepperL(2048, 8, 10, 9, 11);
 Stepper StepperR(2048, 4, 6, 5, 7);
 
 /*設定*/
-void setup(){
+void setup() {
   Wire.begin();
   dht.begin();
   lightMeter.begin();
-  StepperL.setSpeed(15);  //設定馬達RPM
-  StepperR.setSpeed(15);  
+  StepperL.setSpeed(10);  //設定馬達RPM
+  StepperR.setSpeed(10);
+  irrecv.blink13(true); // 設為true的話，當收到訊號時，腳位13的LED便會閃爍
   irrecv.enableIRIn(); // 啟動紅外線接收器
   delay(1000);
-  
+
   lcd.backlight();
-  lcd.begin(16,4);     //初始化 LCD，一行16的字元，共4行，預設開啟背光
-  lcd.setCursor(0,0);  // 設定游標位置在第一行行首
+  lcd.begin(16, 4);    //初始化 LCD，一行16的字元，共4行，預設開啟背光
+  lcd.setCursor(0, 0); // 設定游標位置在第一行行首
   lcd.print(F("Hello"));
   lcd.clear();
 }
 
 /*主程式*/
-void loop(){
-  if (irrecv.decode(&results)){
-    switch(results.value){
-      case 0x00FF629D:
-        do{
+void loop() {
+  if (irrecv.decode(&results)) {
+    switch (results.value) {
+      case automode:  //按鍵(CH)
+        while (results.value != autoset) {
           temp();
           delay(1000);
           lcd.clear();
@@ -72,114 +76,139 @@ void loop(){
           delay(1000);
           lcd.clear();
 
-          //執行馬達
-          if(temp() == 1 || drip() == 1 || GY30() == 1){
-            lcd.print("OPEN");
-            StepperL.step(2048);
-            StepperR.step(2048);
-            delay(1000);
-            lcd.clear();
+          if (i != 1024) { //執行馬達
+            if (temp() == 1 || drip() == 1 || GY30() == 1) {
+              lcd.print("OPEN");
+              StepMotorOpen();
+              delay(1000);
+              lcd.clear();
+              i = StepMotorOpen();
+            }
           }
-          else{
-            lcd.print("CLOSE");
-            StepperL.step(-2048);
-            StepperR.step(-2048);
-            delay(1000);
-            lcd.clear();
+          if (i != 0) {
+            if (temp() == 0 || drip() == 0 || GY30() == 0) {
+              lcd.print("CLOSE");
+              StepMotorClose();
+              delay(1000);
+              lcd.clear();
+              i = StepMotorClose();
+            }
           }
-        }while(results.value != 0x00FF629D);
+        }
         break;
-      case 0x00FFA25D:  //按鍵(CH-)  
-        StepperL.step(2048);
-        StepperR.step(2048);
+      case OPEN:  //按鍵(CH+)
+        StepMotorOpen();
         break;
-      case 0x00FFE21D:  //按鍵(CH+)
-        StepperL.step(-2048);
-        StepperR.step(-2048);
+      case CLOSE:  //按鍵(CH-)
+        StepMotorClose();
         break;
     }
-  irrecv.resume();
+    irrecv.resume();
   }
 }
 
 /*溫濕度感測器模組*/
-float temp(){
-  lcd.setCursor(0,0); //設定游標位置在第一行行首
+int temp() {
+  lcd.setCursor(0, 0); //設定游標位置在第一行行首
   lcd.print("DHT11 Temperature");
 
   float t = dht.readTemperature();
   float f = dht.readTemperature(true);
-  
-   
-  
-  if(isnan(t)||isnan(f)){
+
+
+
+  if (isnan(t) || isnan(f)) {
     lcd.clear();
-    lcd.setCursor(0,0);
+    lcd.setCursor(0, 0);
     lcd.print("Failed to read from DHT sensor!"); //檢測錯誤
     return;
   }
-  else{
+  else {
     //設定游標位置在第二行行首
-    lcd.setCursor(0,1);
+    lcd.setCursor(0, 1);
     lcd.print("Temp:");
     lcd.print(t);
     lcd.print("C ");
     lcd.print(f);
     lcd.print("F");
   }
-  if(t>=35){
-    motor=1;
+  if (t >= 35) {
+    motor = 1;
   }
-  else{
-    motor=0;
+  else {
+    motor = 0;
   }
-  
+
   return motor;
 }
 
 /*水滴感測器模組*/
-float drip(){
-  lcd.setCursor(0,0);
+int drip() {
+  lcd.setCursor(0, 0);
   lcd.print("Water drop sensor");
-  
+
   int sensorReading = analogRead(A0);
   int range = map(sensorReading, sensorMin, sensorMax, 0, 3); //range的範圍
-  
-  lcd.setCursor(0,1);
-  
+
+  lcd.setCursor(0, 1);
+
   switch (range) {
-  case 0: //Sensor全濕
-    motor=1;
-    lcd.print("Flood");
-    break;
-  case 1: //Sensor上有水珠
-    motor=1;
-    lcd.print("Rain Warning");
-    break;
-  case 2: //Sensor是乾的
-    motor=0;
-    lcd.print("Not Raining");
-    break;
+    case 0: //Sensor全濕
+      motor = 1;
+      lcd.print("Flood");
+      break;
+    case 1: //Sensor上有水珠
+      motor = 1;
+      lcd.print("Rain Warning");
+      break;
+    case 2: //Sensor是乾的
+      motor = 0;
+      lcd.print("Not Raining");
+      break;
   }
-  
+
   return motor;
 }
 
 /*光強度感測器模組*/
-float GY30(){
-  lcd.setCursor(0,0);
+int GY30() {
+  lcd.setCursor(0, 0);
   float lux = lightMeter.readLightLevel();
-  
+
   lcd.print("Light:");
   lcd.print(lux);
   lcd.print(" lx");
 
-  if(lux>200){
-    motor=1;
+  if (lux > 200) {
+    motor = 1;
   }
-  else{
-    motor=0;
+  else {
+    motor = 0;
   }
-  
+
   return motor;
+}
+
+int StepMotorOpen() {
+  for (i = 0; i <= 1024; i++) {
+    StepperL.step(1);
+    StepperR.step(-1);
+    if(i=1024){
+      break;
+    }
+  }
+
+  return i;
+}
+
+int StepMotorClose() {
+  for (i = 1024; i >= 0; i--) {
+    StepperL.step(-1);
+    StepperR.step(1);
+    if(i=0){
+      break;
+    }
+  }
+
+  return i;
 }
