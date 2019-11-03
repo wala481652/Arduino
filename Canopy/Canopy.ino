@@ -19,15 +19,14 @@
 #define DHTTYPE DHT11        //選擇HDT的規格
 //#define DHTTYPE DHT22      //DHT 22  (AM2302), AM2321
 //#define DHTTYPE DHT21      //DHT 21  (AM2301)
-#define OPEN 0xE318261B
-#define CLOSE 0xEE886D7F
+#define OPEN 0xEE886D7F
+#define CLOSE 0xE318261B
 #define automode 0x511DBB
 
 //水滴感測的範圍
 const int sensorMin = 0;    //sensor minimum
 const int sensorMax = 1024; //sensor maximum
-int i;
-int autoset = 1;    //預設啟動自動模式為1 關閉為0
+int autoset = 0;    //預設自動模式啟動為1 關閉為0
 int motor = 0;      //預設馬達伸出為1 縮回為0
 
 //初始化DHT11
@@ -36,7 +35,7 @@ DHT dht(DHTPIN, DHTTYPE);
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 BH1750 lightMeter;
 //紅外線感測器
-IRrecv irrecv(3); // Receive on pin 4
+IRrecv irrecv(3); // Receive on pin 3
 decode_results results;
 //2個步進馬達的步數及PIN腳
 Stepper StepperL(2048, 8, 10, 9, 11);
@@ -65,7 +64,7 @@ void loop() {
   if (irrecv.decode(&results)) {
     switch (results.value) {
       case automode:  //按鍵(CH)
-        while (results.value != autoset) {
+        do {
           temp();
           delay(1000);
           lcd.clear();
@@ -76,26 +75,28 @@ void loop() {
           delay(1000);
           lcd.clear();
 
-          if (i != 1024) { //執行馬達
-            if (temp() == 1 || drip() == 1 || GY30() == 1) {
-              lcd.print("OPEN");
-              StepMotorOpen();
-              delay(1000);
-              lcd.clear();
-              i = StepMotorOpen();
-            }
+          if (temp() == 1 || drip() == 1 || GY30() == 1) {
+            lcd.print("OPEN");
+            StepMotorOpen();
+            delay(1000);
+            lcd.clear();
           }
-          if (i != 0) {
-            if (temp() == 0 || drip() == 0 || GY30() == 0) {
-              lcd.print("CLOSE");
-              StepMotorClose();
-              delay(1000);
-              lcd.clear();
-              i = StepMotorClose();
-            }
+          else {
+            lcd.print("CLOSE");
+            StepMotorClose();
+            delay(1000);
+            lcd.clear();
           }
-        }
+          if (irrecv.decode(&results)) {
+            if (results.value == automode) {
+              autoset = 0;
+              break;
+            }
+            irrecv.resume();
+          }
+        } while (autoset == 0);
         break;
+
       case OPEN:  //按鍵(CH+)
         StepMotorOpen();
         break;
@@ -189,26 +190,20 @@ int GY30() {
   return motor;
 }
 
-int StepMotorOpen() {
+void StepMotorOpen() {
+  int i;
   for (i = 0; i <= 1024; i++) {
     StepperL.step(1);
     StepperR.step(-1);
-    if(i=1024){
-      break;
-    }
   }
-
-  return i;
+  return;
 }
 
-int StepMotorClose() {
+void StepMotorClose() {
+  int i;
   for (i = 1024; i >= 0; i--) {
     StepperL.step(-1);
     StepperR.step(1);
-    if(i=0){
-      break;
-    }
   }
-
-  return i;
+  return;
 }
