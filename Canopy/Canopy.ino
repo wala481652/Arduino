@@ -64,6 +64,8 @@ void loop() {
   if (irrecv.decode(&results)) {
     switch (results.value) {
       case automode:  //按鍵(CH)
+        delay(100);
+        irrecv.resume();
         do {
           temp();
           delay(1000);
@@ -86,8 +88,9 @@ void loop() {
             StepMotorClose();
             delay(1000);
             lcd.clear();
+
           }
-        } while (！automode);
+        } while (results.value != automode);
         break;
 
       case OPEN:  //按鍵(CH+)
