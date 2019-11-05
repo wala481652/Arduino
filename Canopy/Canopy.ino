@@ -87,14 +87,7 @@ void loop() {
             delay(1000);
             lcd.clear();
           }
-          if (irrecv.decode(&results)) {
-            if (results.value == automode) {
-              autoset = 0;
-              break;
-            }
-            irrecv.resume();
-          }
-        } while (autoset == 0);
+        } while (！automode);
         break;
 
       case OPEN:  //按鍵(CH+)
