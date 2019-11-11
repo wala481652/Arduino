@@ -22,6 +22,9 @@
 #define OPEN 0xEE886D7F
 #define CLOSE 0xE318261B
 #define automode 0x511DBB
+#define Temp 0x9716BE3F
+#define Drip 0x3D9AE3F7
+#define Light 0x6182021B
 
 //初始化DHT11
 DHT dht(DHTPIN, DHTTYPE);
@@ -39,7 +42,7 @@ Stepper StepperR(2048, 4, 6, 5, 7);
 const int sensorMin = 0;    //sensor minimum
 const int sensorMax = 1024; //sensor maximum
 bool autoset = 0;    //預設自動模式啟動為1 關閉為0
-int motor = 0;      //預設馬達伸出為1 縮回為0
+int motor = 0;
 
 /*設定*/
 void setup() {
@@ -52,51 +55,115 @@ void setup() {
   irrecv.enableIRIn(); // 啟動紅外線接收器
   delay(1000);
 
-  lcd.backlight();
   lcd.begin(16, 4);    //初始化 LCD，一行16的字元，共4行，預設開啟背光
   lcd.setCursor(0, 0); // 設定游標位置在第一行行首
   lcd.print(F("Hello"));
+  delay(2000);
   lcd.clear();
+  lcd.print(F("push the button"));
 }
 
 /*主程式*/
 void loop() {
   if (irrecv.decode(&results)) {
     switch (results.value) {
-      case automode:
+      case automode:  //按鍵(CH)
+        lcd.clear();
         autoset = !autoset;
+        if(autoset == 1){
+          lcd.print("OPEN THE AUTOMODE");
+        }
+        else{
+          lcd.print("CLOSE THE AUTOMODE");
+          lcd.clear();
+          lcd.print("push the button");
+        }
         break;
-      case OPEN:  //按鍵(CH+)
-        StepMotorOpen();
+      case OPEN:      //按鍵(CH+)
+        if (autoset != 1) {
+          motor = 0;
+          lcd.clear();
+          lcd.print("OPEN");
+          StepMotorOpen();
+          lcd.clear();
+          lcd.print("push the button");
+        }
         break;
-      case CLOSE:  //按鍵(CH-)
-        StepMotorClose();
+      case CLOSE:     //按鍵(CH-)
+        if (autoset != 1) {
+          motor = 1;
+          lcd.clear();
+          lcd.print("CLOSE");
+          StepMotorClose();
+          lcd.clear();
+          lcd.print("push the button");
+        }
+        break;
+      case Temp:      //按鍵(1)
+        if (autoset != 1) {
+          lcd.clear();
+          temp();
+        }
+        break;
+      case Drip:      //按鍵(2)
+        if (autoset != 1) {
+          lcd.clear();
+          drip();
+        }
+        break;
+      case Light:     //按鍵(3)
+        if (autoset != 1) {
+          lcd.clear();
+          light();
+        }
         break;
     }
     irrecv.resume();
   }
   if (autoset == 1) {
-    temp();
-    delay(1000);
-    lcd.clear();
-    drip();
-    delay(1000);
-    lcd.clear();
-    GY30();
-    delay(1000);
-    lcd.clear();
-
-    if (temp() == 1 || drip() == 1 || GY30() == 1) {
-      lcd.print("OPEN");
-      StepMotorOpen();
-      delay(1000);
-      lcd.clear();
+    if (temp() == 1 || drip() == 1 || light() == 1) {
+      if (motor == 0) {
+        lcd.clear();
+        lcd.print("OPEN");
+        StepMotorOpen();
+        motor = 1;
+        delay(1000);
+        lcd.clear();
+      }
+      else {
+        lcd.clear();
+        temp();
+        delay(2000);
+        lcd.clear();
+        drip();
+        delay(2000);
+        lcd.clear();
+        light();
+        delay(2000);
+        lcd.clear();
+      }
     }
-    else {
-      lcd.print("CLOSE");
-      StepMotorClose();
-      delay(1000);
-      lcd.clear();
+    else if (temp() == 0 && drip() == 0 && light() == 0) {
+      if (motor == 1) {
+        lcd.clear();
+        lcd.print("CLOSE");
+        StepMotorClose();
+        motor = 0;
+        delay(1000);
+        lcd.clear();
+      }
+      else {
+        lcd.clear();
+        temp();
+        delay(2000);
+        lcd.clear();
+        drip();
+        delay(2000);
+        lcd.clear();
+        light();
+        delay(2000);
+        lcd.clear();
+      }
     }
   }
 }
@@ -165,7 +232,7 @@ int drip() {
 }
 
 /*光強度感測器模組*/
-int GY30() {
+int light() {
   lcd.setCursor(0, 0);
   float lux = lightMeter.readLightLevel();
 
