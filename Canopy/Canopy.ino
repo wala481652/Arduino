@@ -62,45 +62,48 @@ void setup() {
 /*主程式*/
 void loop() {
   if (irrecv.decode(&results)) {
-    switch (results.value) {
-      case automode:  //按鍵(CH)
-        delay(100);
-        irrecv.resume();
-        do {
-          temp();
-          delay(1000);
-          lcd.clear();
-          drip();
-          delay(1000);
-          lcd.clear();
-          GY30();
-          delay(1000);
-          lcd.clear();
-
-          if (temp() == 1 || drip() == 1 || GY30() == 1) {
-            lcd.print("OPEN");
-            StepMotorOpen();
-            delay(1000);
-            lcd.clear();
-          }
-          else {
-            lcd.print("CLOSE");
-            StepMotorClose();
-            delay(1000);
-            lcd.clear();
-
-          }
-        } while (results.value != automode);
-        break;
-
-      case OPEN:  //按鍵(CH+)
-        StepMotorOpen();
-        break;
-      case CLOSE:  //按鍵(CH-)
-        StepMotorClose();
-        break;
-    }
     irrecv.resume();
+  }
+  switch (results.value) {
+    case automode:  //按鍵(CH)
+      delay(100);
+      irrecv.resume();
+      do {
+        if (irrecv.decode(&results) == automode) {
+          irrecv.resume();
+          break;
+        }
+        temp();
+        delay(1000);
+        lcd.clear();
+        drip();
+        delay(1000);
+        lcd.clear();
+        GY30();
+        delay(1000);
+        lcd.clear();
+
+        if (temp() == 1 || drip() == 1 || GY30() == 1) {
+          lcd.print("OPEN");
+          StepMotorOpen();
+          delay(1000);
+          lcd.clear();
+        }
+        else {
+          lcd.print("CLOSE");
+          StepMotorClose();
+          delay(1000);
+          lcd.clear();
+        }
+      } while (1);
+      break;
+
+    case OPEN:  //按鍵(CH+)
+      StepMotorOpen();
+      break;
+    case CLOSE:  //按鍵(CH-)
+      StepMotorClose();
+      break;
   }
 }
 
