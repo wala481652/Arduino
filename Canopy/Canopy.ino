@@ -23,12 +23,6 @@
 #define CLOSE 0xE318261B
 #define automode 0x511DBB
 
-//水滴感測的範圍
-const int sensorMin = 0;    //sensor minimum
-const int sensorMax = 1024; //sensor maximum
-int autoset = 0;    //預設自動模式啟動為1 關閉為0
-int motor = 0;      //預設馬達伸出為1 縮回為0
-
 //初始化DHT11
 DHT dht(DHTPIN, DHTTYPE);
 //設定 LCD I2C 位址
@@ -40,6 +34,12 @@ decode_results results;
 //2個步進馬達的步數及PIN腳
 Stepper StepperL(2048, 8, 10, 9, 11);
 Stepper StepperR(2048, 4, 6, 5, 7);
+
+//水滴感測的範圍
+const int sensorMin = 0;    //sensor minimum
+const int sensorMax = 1024; //sensor maximum
+bool autoset = 0;    //預設自動模式啟動為1 關閉為0
+int motor = 0;      //預設馬達伸出為1 縮回為0
 
 /*設定*/
 void setup() {
@@ -62,48 +62,42 @@ void setup() {
 /*主程式*/
 void loop() {
   if (irrecv.decode(&results)) {
+    switch (results.value) {
+      case automode:
+        autoset = !autoset;
+        break;
+      case OPEN:  //按鍵(CH+)
+        StepMotorOpen();
+        break;
+      case CLOSE:  //按鍵(CH-)
+        StepMotorClose();
+        break;
+    }
     irrecv.resume();
   }
-  switch (results.value) {
-    case automode:  //按鍵(CH)
-      delay(100);
-      irrecv.resume();
-      do {
-        if (irrecv.decode(&results) == automode) {
-          irrecv.resume();
-          break;
-        }
-        temp();
-        delay(1000);
-        lcd.clear();
-        drip();
-        delay(1000);
-        lcd.clear();
-        GY30();
-        delay(1000);
-        lcd.clear();
+  if (autoset == 1) {
+    temp();
+    delay(1000);
+    lcd.clear();
+    drip();
+    delay(1000);
+    lcd.clear();
+    GY30();
+    delay(1000);
+    lcd.clear();
 
-        if (temp() == 1 || drip() == 1 || GY30() == 1) {
-          lcd.print("OPEN");
-          StepMotorOpen();
-          delay(1000);
-          lcd.clear();
-        }
-        else {
-          lcd.print("CLOSE");
-          StepMotorClose();
-          delay(1000);
-          lcd.clear();
-        }
-      } while (1);
-      break;
-
-    case OPEN:  //按鍵(CH+)
+    if (temp() == 1 || drip() == 1 || GY30() == 1) {
+      lcd.print("OPEN");
       StepMotorOpen();
-      break;
-    case CLOSE:  //按鍵(CH-)
+      delay(1000);
+      lcd.clear();
+    }
+    else {
+      lcd.print("CLOSE");
       StepMotorClose();
-      break;
+      delay(1000);
+      lcd.clear();
+    }
   }
 }
 
