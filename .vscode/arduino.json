@@ -1,0 +1,6 @@
+{
+    "port": "COM3",
+    "board": "arduino:avr:uno",
+    "programmer": "AVR ISP",
+    "sketch": "libraries\\Adafruit_Circuit_Playground\\examples\\Hello_CircuitPlayground\\Hello_Accelerometer\\Hello_Accelerometer.ino"
+}
