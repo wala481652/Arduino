@@ -1,12 +1,15 @@
-#define LCD 13
 
-void setup(){
-  
+void setup()
+{
+  pinMode(1, LOW);
+  pinMode(13,LOW);
 }
 
-void loop(){
-  digitalWrite(LCD,HIGH);
-  delay(500);
-  digitalWrite(LCD,LOW);
-  delay(500);
+void loop() {
+  if(digitalRead(1)==HIGH){
+    digitalWrite(13,HIGH);
+  }
+  else{
+    digitalWrite(13,LOW);
+  }
 }
