@@ -42,8 +42,8 @@ const int sensorMin = 0;    //sensor minimum
 const int sensorMax = 1024; //sensor maximum
 bool autoset = 0;           //預設自動模式啟動為1 關閉為0
 bool T = 0, D = 0, L = 0;
-bool motor = 0;             //預設馬達啟動模式為1 關閉為0
-bool motorset = 0;              //馬達目前狀態
+int motor = 0, motorset = 0; //預設馬達啟動模式為1 關閉為0
+bool X;
 
 /*設定*/
 void setup()
@@ -59,10 +59,10 @@ void setup()
 
   lcd.begin(16, 4);    //初始化 LCD，一行16的字元，共4行，預設開啟背光
   lcd.setCursor(0, 0); // 設定游標位置在第一行行首
-  lcd.print(F("Hello"));
+  lcd.print("Hello");
   StepMotorClose();
   lcd.clear();
-  lcd.print(F("push the button"));
+  lcd.print("push the button");
 }
 
 /*主程式*/
@@ -74,11 +74,15 @@ void loop()
     {
       case Automode: //按鍵(CH)
         autoset = !autoset;
-        if (autoset == 1) {
+        if (autoset == 1)
+        {
+          X = 1;
           lcd.clear();
           lcd.print("OPEN THE AUTOMODE");
         }
-        else {
+        else
+        {
+          X = 0;
           lcd.clear();
           lcd.print("CLOSE THE AUTOMODE");
           delay(2000);
@@ -87,71 +91,55 @@ void loop()
         }
         break;
       case OPEN: //按鍵(CH+)
-        if (autoset != 1) {
-          if (motorset == 0) {
-            lcd.clear();
-            lcd.print("OPEN");
-            StepMotorOpen();
-            lcd.clear();
-            lcd.print("push the button");
-          }
-          else {
-            lcd.clear();
-            lcd.print("canopy is on");
-            delay(2000);
-            lcd.clear();
-            lcd.print("push the button");
-          }
+        if (autoset != 1)
+        {
+          motorset = 1;
+          lcd.clear();
+          lcd.print("OPEN");
+          StepMotorOpen();
+          lcd.clear();
+          lcd.print("push the button");
         }
         break;
       case CLOSE: //按鍵(CH-)
-        if (autoset != 1) {
-          if (motorset == 1) {
-            lcd.clear();
-            lcd.print("CLOSE");
-            StepMotorClose();
-            lcd.clear();
-            lcd.print("push the button");
-          }
-          else {
-            lcd.clear();
-            lcd.print("canopy is off");
-            delay(2000);
-            lcd.clear();
-            lcd.print("push the button");
-          }
+        if (autoset != 1)
+        {
+          motorset = 0;
+          lcd.clear();
+          lcd.print("CLOSE");
+          StepMotorClose();
+          lcd.clear();
+          lcd.print("push the button");
         }
         break;
       case Temp: //按鍵(<<<)
         T = 1;
-        D = 0;
-        L = 0;
-        if (autoset != 1) {
+        if (autoset != 1)
+        {
           lcd.clear();
           lcd.print("Temperature sensor");
           delay(1000);
+          temp(T);
         }
         break;
       case Drip: //按鍵(>>>)
         D = 1;
-        T = 0;
-        L = 0;
         if (autoset != 1)
         {
           lcd.clear();
           lcd.print("Water drop sensor");
           delay(1000);
+          drip(D);
         }
         break;
       case Light: //按鍵(>||)
         L = 1;
-        T = 0;
-        D = 0;
         if (autoset != 1)
         {
           lcd.clear();
           lcd.print("Light sensor");
           delay(1000);
+          light(L);
         }
         break;
       default:
@@ -159,28 +147,12 @@ void loop()
     }
     irrecv.resume();
   }
-
   if (autoset == 1) {
-    delay(50);
     autoMode();
-  }
-  else {
-    if (T == 1) {
-      delay(1500);
-      temp(1);
-    }
-    if (D == 1) {
-      delay(1500);
-      drip(1);
-    }
-    if (L == 1) {
-      delay(1500);
-      light(1);
-    }
   }
 }
 /*溫濕度感測器模組*/
-bool temp(bool T)
+int temp(int T)
 {
   float t = dht.readTemperature();
   float f = dht.readTemperature(true);
@@ -217,7 +189,7 @@ bool temp(bool T)
 }
 
 /*水滴感測器模組*/
-bool drip(bool D)
+int drip(int D)
 {
   int sensorReading = analogRead(A0);
   int range = map(sensorReading, sensorMin, sensorMax, 0, 3); //range的範圍
@@ -253,7 +225,7 @@ bool drip(bool D)
 }
 
 /*光強度感測器模組*/
-bool light(bool L)
+int light(int L)
 {
   float lux = lightMeter.readLightLevel();
   if (L == 1)
@@ -280,7 +252,6 @@ bool light(bool L)
 void StepMotorOpen()
 {
   int i;
-  motorset = 1;
   for (i = 0; i <= 2048; i++)
   {
     StepperL.step(1);
@@ -293,7 +264,6 @@ void StepMotorOpen()
 void StepMotorClose()
 {
   int i, stepL = -1, stepR = 1;
-  motorset = 0;
   for (i = 0; i <= 2048; i++)
   {
     StepperL.step(stepL);
@@ -302,27 +272,31 @@ void StepMotorClose()
   return;
 }
 
-/*自動模式*/
 void autoMode() {
-  delay(50);
-  if (temp(0) == 1 || drip(0) == 1 || light(0) == 1) {
-    if (motorset == 0) {
+  if (temp(1) == 1 || drip(1) == 1 || light(1) == 1) {
+    if (X == 1) {
       lcd.clear();
       lcd.print("OPEN");
       StepMotorOpen();
       delay(1000);
       lcd.clear();
-      lcd.print("OPEN THE AUTOMODE");
+      X = 0;
+    }
+    else {
+      delay(50);
     }
   }
   else {
-    if (motorset == 1) {
+    if (X == 0) {
       lcd.clear();
       lcd.print("CLOSE");
       StepMotorClose();
       delay(1000);
       lcd.clear();
-      lcd.print("OPEN THE AUTOMODE");
+      X = 1;
+    }
+    else {
+      delay(50);
     }
   }
   return;
