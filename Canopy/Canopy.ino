@@ -40,10 +40,12 @@ Stepper StepperR(2048, 4, 6, 5, 7);
 //水滴感測的範圍
 const int sensorMin = 0;    //sensor minimum
 const int sensorMax = 1024; //sensor maximum
+const int button1 = 0;
+const int button2 = 1;
 bool autoset = 0;           //預設自動模式啟動為1 關閉為0
 bool T = 0, D = 0, L = 0;
 bool motor = 0;             //預設馬達啟動模式為1 關閉為0
-bool motorset = 0;              //馬達目前狀態
+bool motorset;              //馬達目前狀態
 
 /*設定*/
 void setup()
@@ -281,7 +283,7 @@ void StepMotorOpen()
 {
   int i;
   motorset = 1;
-  for (i = 0; i <= 2048; i++)
+  for (i = 0; i <= 4500; i++)
   {
     StepperL.step(1);
     StepperR.step(-1);
@@ -294,8 +296,16 @@ void StepMotorClose()
 {
   int i, stepL = -1, stepR = 1;
   motorset = 0;
-  for (i = 0; i <= 2048; i++)
+  for (i = 0; i <= 4500; i++)
   {
+    if (digitalRead(button1) == LOW) {
+      delay(50);
+      stepL = 0;
+    }
+    if (digitalRead(button2) == LOW) {
+      delay(50);
+      stepR = 0;
+    }
     StepperL.step(stepL);
     StepperR.step(stepR);
   }
