@@ -89,6 +89,9 @@ void loop()
         }
         break;
       case OPEN: //按鍵(CH+)
+        T = 0;
+        D = 0;
+        L = 0;
         if (autoset != 1) {
           if (motorset == 0) {
             lcd.clear();
@@ -107,6 +110,9 @@ void loop()
         }
         break;
       case CLOSE: //按鍵(CH-)
+        T = 0;
+        D = 0;
+        L = 0;
         if (autoset != 1) {
           if (motorset == 1) {
             lcd.clear();
@@ -294,20 +300,25 @@ void StepMotorOpen()
 /*馬達反轉*/
 void StepMotorClose()
 {
-  int i, stepL = -1, stepR = 1;
+  int i;
   motorset = 0;
   for (i = 0; i <= 4500; i++)
   {
+    if (digitalRead(button2) == LOW && digitalRead(button1) == LOW) {
+      break;
+    }
     if (digitalRead(button1) == LOW) {
       delay(50);
-      stepL = 0;
+      StepperR.step(100);
     }
-    if (digitalRead(button2) == LOW) {
+    else if (digitalRead(button2) == LOW) {
       delay(50);
-      stepR = 0;
+      StepperL.step(-100);
     }
-    StepperL.step(stepL);
-    StepperR.step(stepR);
+    else {
+      StepperL.step(-1);
+      StepperR.step(1);
+    }
   }
   return;
 }
