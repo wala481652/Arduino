@@ -272,7 +272,7 @@ bool light(bool L)
     lcd.print(" lx");
   }
 
-  if (lux > 200)
+  if (lux > 300)
   {
     motor = 1;
   }
