@@ -2,22 +2,27 @@
    水滴感測器 Pin A0
    I2C PIN SDA A4 SCL A5
    LCD 與 GY30並聯
-   紅外線感測器PIN 3 */
+   紅外線感測器PIN 3      */
 
 //I2C腳位的的標頭檔(A5=SCL,A4=SDA)
 #include <Wire.h>
 //使用I2C控制器控制標準LCD的聲明
 #include <LCD.h>
 #include <LiquidCrystal_I2C.h>
+//DHT11的標頭檔
 #include <DHT.h>
+//光強度感測器的標頭檔
 #include <BH1750.h>
+//紅外線控制器的標頭檔
 #include <IRremote.h>
+//步進馬達的標頭檔
 #include <Stepper.h>
 
-#define DHTPIN 2      //DHT輸入PIN腳為2
-#define DHTTYPE DHT11 //選擇HDT的規格
+#define DHTPIN 2             //DHT輸入PIN腳為2
+#define DHTTYPE DHT11        //選擇HDT的規格
 //#define DHTTYPE DHT22      //DHT 22  (AM2302), AM2321
 //#define DHTTYPE DHT21      //DHT 21  (AM2301)
+/*定義紅外線遙控器個按鍵之位址*/
 #define OPEN 0x00FFE21D
 #define CLOSE 0x00FFA25D
 #define Automode 0x00FF629D
@@ -31,7 +36,7 @@ DHT dht(DHTPIN, DHTTYPE);
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 BH1750 lightMeter;
 //紅外線感測器
-IRrecv irrecv(3); // Receive on pin 3
+IRrecv irrecv(3); // Receive pin 3
 decode_results results;
 //2個步進馬達的步數及PIN腳
 Stepper StepperL(2048, 8, 10, 9, 11);
@@ -40,10 +45,11 @@ Stepper StepperR(2048, 4, 6, 5, 7);
 //水滴感測的範圍
 const int sensorMin = 0;    //sensor minimum
 const int sensorMax = 1024; //sensor maximum
+//定義極限開關腳位
 const int button1 = 0;
 const int button2 = 1;
 bool autoset = 0;           //預設自動模式啟動為1 關閉為0
-bool T = 0, D = 0, L = 0;
+bool T = 0, D = 0, L = 0;   //感測器是否顯示與LCD 0為顯示 1為關閉(T為溫度感測器 D為水滴感測器 L為光強度感測器)
 bool motor = 0;             //預設馬達啟動模式為1 關閉為0
 bool motorset;              //馬達目前狀態
 
