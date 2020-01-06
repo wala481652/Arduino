@@ -7,7 +7,6 @@
 //I2C腳位的的標頭檔(A5=SCL,A4=SDA)
 #include <Wire.h>
 //使用I2C控制器控制標準LCD的聲明
-#include <LCD.h>
 #include <LiquidCrystal_I2C.h>
 //DHT11的標頭檔
 #include <DHT.h>
@@ -33,7 +32,7 @@
 //初始化DHT11
 DHT dht(DHTPIN, DHTTYPE);
 //設定 LCD I2C 位址
-LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
+LiquidCrystal_I2C lcd(0x27, 16,2);
 BH1750 lightMeter;
 //紅外線感測器
 IRrecv irrecv(3); // Receive pin 3
@@ -57,6 +56,7 @@ bool motorset;              //馬達目前狀態
 void setup()
 {
   Wire.begin();
+  lcd.init();
   dht.begin();
   lightMeter.begin();
   StepperL.setSpeed(10); //設定馬達RPM
@@ -65,7 +65,7 @@ void setup()
   irrecv.enableIRIn();  // 啟動紅外線接收器
   delay(1000);
 
-  lcd.begin(16, 4);    //初始化 LCD，一行16的字元，共4行，預設開啟背光
+  lcd.backlight();
   lcd.setCursor(0, 0); // 設定游標位置在第一行行首
   lcd.print(F("Hello"));
   StepMotorClose();
