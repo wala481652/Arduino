@@ -1,4 +1,4 @@
-/* DHT11 Pin 2 VCC 3.3V
+/* DHT11 Pin 2 VCC 5V
    水滴感測器 Pin A0
    I2C PIN SDA A4 SCL A5
    LCD 與 GY30並聯
